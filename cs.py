@@ -1,3 +1,15 @@
+import re
+import math
+import scipy.stats
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+%matplotlib inline
+
+
+import scipy.stats
 def sensitivity(ant1, consequent, columns):
     
     tp_row = [0]*len(columns)
@@ -17,11 +29,19 @@ def sensitivity(ant1, consequent, columns):
         fn_row[k]=fn
         k+=1
     
+    if sum(tp_row) == 0 or sum(fn_row) == 0:
+        return [0, 0], 0
+        
+    for i in range(len(tp_row)):
+        if tp_row[i]==0 and fn_row[i]==0:
+            return [0, 0], 0
+        
     total = sum(tp_row)+sum(fn_row)
     p = sum(tp_row)/total
     q = sum(fn_row)/total
-    fval = chi_test(tp_row, fn_row, total, p, q, len(columns))
-    return fval
+    #fval = chi_test(tp_row, fn_row, total, p, q, len(columns))
+    row1, row2 = chi_test(tp_row, fn_row, total, p, q, len(tp_row))
+    return scipy.stats.chi2_contingency([tp_row, fn_row]), [row1, row2]
 
 def chi_test(row1, row2, total, p, q, n):
     
@@ -41,24 +61,43 @@ def chi_test(row1, row2, total, p, q, n):
         
         fval_tp_row[i] = pow(a-ex_tp_row[i], 2)/ex_tp_row[i]
         fval_fn_row[i] = pow(b-ex_fn_row[i], 2)/ex_fn_row[i]
-    fval = sum(fval_fn_row)+sum(fval_tp_row)
-    return fval
+        
+    return fval_tp_row, fval_fn_row
+
 
 import math
-data = pd.read_csv('GRIT06.csv')
-cols = ['CCY']
-di = {}
-for string in cols:
+data = pd.read_csv('GRIT08bin.csv')
+raw = pd.read_csv('GRIT08raw.csv')
+orig_columns = {}
+for string in raw.columns[1:]:
     for column in data.columns:
         if re.search(string, column):
-            if string not in di:
-                di[string]=[column]
+            if string not in orig_columns:
+                orig_columns[string]=[column]
             else:
-                di[string].append(column)
+                orig_columns[string].append(column)
                 
-                
-a=data['SOURCE_APPLICATION_ID=PEC/QTZ_MI'].tolist()
-a = [1-i for i in a]
-b=data['SECONDBIT=1_APP_ORGIN_RCG'].tolist()
-b=[1-i for i in b]    
-print(sensitivity(a, b, di['CCY'][:-1]))
+ ant = data['SOURCE_APPLICATION_ID=PEC/QTZ_MI'].tolist()
+ant = [1-i for i in ant]
+cons = data['SECONDBIT=1_APP_ORGIN_RCG'].tolist()
+cons = [1-i for i in cons] 
+
+df = []
+exp = []
+for column in orig_columns:
+    
+    f, chi_vals = sensitivity(ant, cons, orig_columns[column])
+    
+    df.append((column, f[0], f[1]))
+    
+    exp.append((orig_columns[column], chi_vals))
+    
+    
+df = sorted(df, reverse=True, key=lambda x:x[1])
+df = pd.DataFrame(df, columns = ['Ccolumn', 'Chi Stat', 'P value'])
+
+for item in exp[2:]:
+    
+    plt.pie(list(map(add, item[1][0],item[1][1])), radius=3, labels=item[0], autopct='%1.2f%%')
+    pplt.title
+    break
