@@ -1,14 +1,7 @@
-'''This is not a working code...YOU HAVE TO ADD GRAPH VISUALIZATION PART[REFER: https://github.com/lucksd356/DecisionTrees/blob/master/dtree.py WE ARE USING SAME LOGIC )
-(FOR SAVING BRANCHES WE ARE USING LIST..SO CHANGE THAT CODE ACCORDINGLY)]..VENKATESH WILL PROVIDE OTHER FUNCTIONS..)
-FUNCTIONS TO BE PROVIDED
-****
-1.p_value()#function to find the column in raw file with lowest p value.Fuction should return a tuple with child_name and p_value
-2.binary_cols_of_given_raw_col(col_with_low_p_value[0])#binary column names corresponding to the column in raw file with lowest p value
-'''
 import csv
 from collections import defaultdict
 import pydotplus
-
+import scipy.stats
 
 class DecisionTree:
     """Binary tree implementation with true and false branch. """
@@ -20,28 +13,22 @@ def growDecisionTreeFrom(dataset,cnsqnt,ante):
     #dataset dataframe does not contain antecedent columns
     if len(dataset) == 0: return DecisionTree()
     child=p_value(ante, cnsqnt, dataset)#function to find the column in raw file with lowest p value.Fuction should return a tuple with child_name and p_value
-    
-   
+    #print(ante)
     for x in child:
-        
-        branches=[]
         data_copy_=dataset.copy()
-        
         data_copy=data_copy_.loc[data_copy_[x] == 1]
-        
+        del data_copy[x]
         data_copy=data_copy.loc[:, (data_copy != 0).any(axis=0)]#deleting columns with all values in the column=0
         antecedent=ante.copy() 
         antecedent.append(x)
-        
-        
-        branches.append(growDecisionTreeFrom(data_copy_,cnsqnt,antecedent))
+  
+        branch[i]=growDecisionTreeFrom(data_copy,cnsqnt,antecedent)
         i=i+1
-        return DecisionTree(col=child, branches=branch)
-
+    return DecisionTree(col=child, branches=branch) 
 
 def find_columns(df):
     
-    raw = pd.read_csv('GRIT10Raw.csv')
+    raw = pd.read_csv('GRIT23Bin.csv')
     
     total_columns = {}
     for string in raw.columns[1:]:
@@ -57,19 +44,19 @@ def find_columns(df):
 def calculate_p_value(ante, cons, column, df): #ante and cons are column names and not list
     
     tp_row, fn_row = [0]*len(column), [0]*len(column)
-    consequent = df[cons].tolist()
+    consequent = gg[cons].tolist()
     n = len(consequent)
     ante1 = [1]*n
-    
+
     for i in ante:
-        a = df[i].tolist()
+        a = gg[i].tolist()
         ante1 = [a[j]*ante1[j] for j in range(n)]
     
     k = 0
     
     for col in column:
         tp, fn = 0, 0
-        ante2 = df[col].tolist()
+        ante2 = gg[col].tolist()
         antecedent = [ante1[i]*ante2[i] for i in range(len(ante2))]
         for i in range(len(antecedent)):
             if antecedent[i] == 1 and consequent[i] == 1:
@@ -80,7 +67,7 @@ def calculate_p_value(ante, cons, column, df): #ante and cons are column names a
         tp_row[k] = tp
         fn_row[k] = fn
         k+=1
-    
+        
     if len(tp_row) == 1:
         return [0, 0, 0]
     if sum(tp_row) == 0 or sum(fn_row) == 0:
@@ -95,7 +82,7 @@ def p_value(antecedent, consequent, df):
     list_of_columns = []
     
     total_columns = find_columns(df)
-    
+
     for column in total_columns:
         
         chi_val = calculate_p_value(antecedent, consequent, total_columns[column], df)
@@ -116,15 +103,16 @@ def p_value(antecedent, consequent, df):
 
 cnsqnt='not_SECONDBIT=1_APP_ORGIN_RCG'
 ante=['not_PEC/QTZ_SOURCE_APPLICATION_ID_MI']
-if __name__ == '__main__':
-    bHeader = True
-    data= pd.read_csv('GRIT10Bin.csv')
-    data['not_PEC/QTZ_SOURCE_APPLICATION_ID_MI'] = [1-i for i in data['PEC/QTZ_SOURCE_APPLICATION_ID_MI']]
-    data=data.loc[data['not_PEC/QTZ_SOURCE_APPLICATION_ID_MI'] == 1]
-    data['not_SECONDBIT=1_APP_ORGIN_RCG'] = [1-i for i in data['SECONDBIT=1_APP_ORGIN_RCG']]
-    data=data.loc[:, (data != 0).any(axis=0)]#deleting columns with all values in the column=0
-    decisionTree = growDecisionTreeFrom(data,cnsqnt,ante)
-    result = plot(decisionTree)
-    '''dot_data = dotgraph(decisionTree)
-    graph = pydotplus.graph_from_dot_data(dot_data)
-    graph.write_png("iris.png")'''
+data1= pd.read_csv('GRIT23Bin.csv')
+
+data=data1.loc[data1['not_PEC/QTZ_SOURCE_APPLICATION_ID_MI'] == 1]
+del data[ 'PEC_SOURCE_APPLICATION_ID_MI']
+data=data.loc[:, (data != 0).any(axis=0)]#deleting columns with all values in the column=0
+gg=data.copy()
+del data['not_PEC/QTZ_SOURCE_APPLICATION_ID_MI']
+
+decisionTree = growDecisionTreeFrom(data,cnsqnt,ante)
+#result = plot(decisionTree)
+'''dot_data = dotgraph(decisionTree)
+graph = pydotplus.graph_from_dot_data(dot_data)
+graph.write_png("iris.png")'''
